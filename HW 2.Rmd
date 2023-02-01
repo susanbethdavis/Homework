@@ -39,73 +39,154 @@ head(flights)
 ?flights
 filter(flights, dep_delay >= 2)
 ```
+
 ```{r}
-filter(flights, dest == 'IAH' | dest == 'HOU')
+filter(flights, dest == 'IAH' | dest == 'HOU')#3H4M want vs act 3h13 
 ```
+
 ```{r}
 filter(flights, carrier == 'AA'| carrier ==  'UA'| carrier ==  'DL' )
 ```
+
 ```{r}
 filter(flights, month%in% c(7:9))
 ```
 
-##  Exercise 2
 ```{r}
-#
+f.accuracy<-mutate(flights,
+                dep_hr=dep_time%/%100+(dep_time%%100)/60,
+                sched_dep_hr=sched_dep_time%/%100+(sched_dep_time%%100)/60,
+                arr_hr=arr_time%/%100+(arr_time%%100)/60,
+                sched_arr_hr=sched_arr_time%/%100+(sched_arr_time%%100)/60,
+                dep_delay_hr=dep_hr-sched_dep_hr, #1:00 - 12:30 (LOST 30 MIN)
+                arr_delay_hr=arr_hr-sched_arr_hr,  #12:30 - 12:00 (LOST 30 MIN)
+                gain_hr= arr_delay_hr - dep_delay_hr) # -30 + 30 
+
 ```
 
-##  Exercise 3
 ```{r}
-#
+filter(f.accuracy, dep_delay >= 1, gain_hr <=30)
+```
+```{r}
+filter(f.accuracy, dep_hr >= 0, dep_hr<= 6)
+```
+
+##  Exercise 2
+ Another useful dplyr filtering helper is between(). What does it
+do? Can you use it to simplify the code needed to answer the
+previous challenges?
+
+#The between() function in the dplyr package is a function that allows you to filter data based on a range of values for a specific column. The function takes two arguments, the lower and upper bounds of the range, and returns a logical vector indicating which rows fall within the specified range. This function would have been most useful for the last part of question one when we were trying to find rows with the time between midnight and 6am.
+
+##  Exercise 3
+How many flights have a missing dep_time? What other variables are missing? What might these rows represent?
+8255 flights have a missing dep_time. Other variables missing include dep_delay, arr_time, arr_delay, and air_time. Maybe these represent flights that were cancelled. 
+```{r}
+nrow(filter(flights, is.na(dep_time)))
+filter(flights, is.na(dep_time))
 ```
 
 # Chapter 3 (Pg. 51)
 
 ##  Exercise 2
+
+Sort flights to find the most delayed flights. Find the flights
+that left earliest.
+
 ```{r}
-#
+arrange(flights, desc(dep_delay))
+arrange(flights, dep_delay)
 ```
 
+
 ##  Exercise 3
+Sort flights to find the fastest flights.
 ```{r}
-#
+arrange(flights, air_time)
 ```
 
 ##  Exercise 4
+Which flights traveled the longest? Which traveled the shortest?
+Longest: Flight 51
+Shortest: Flight 4368
 ```{r}
-#
+arrange(flights, desc(air_time))
+arrange(flights, air_time)
+
 ```
 
 # Chapter 3 (Pg. 54)
 
 ##  Exercise 2
+What happens if you include the name of a variable multiple
+times in a select() call?
+
+When I tried including air time twice using the select function, the column ignored the second iteration of air_time in the function, only outputting the first call to air_time. 
 ```{r}
-#
+select(flights, air_time, dep_delay, air_time)
 ```
 
 ##  Exercise 4
+
+Does the result of running the following code surprise you? 
+How do the select helpers deal with case by default? How can
+you change that default?
+
+No the code output does not surprise me. Select looks at columns specified and outputs a data set with only those columns. It makes sense to me that if we use a function that picks columns that contain a specific word, that select will then use this list of columns and add them to a new data set as an output. I suppose it does shock me a little that we have time in all caps but we are returned with columns that has time in lower case. 
+
+The select() helpers in the dplyr package by default are case sensitive when selecting variables from a data frame. You can change this setting with the following code:
+
+select(flights, matches('time'))
 ```{r}
-#
+select(flights, contains("TIME"))
+
 ```
 
 # Chapter 3 (Pg. 58)
 
 ##  Exercise 1
+Currently dep_time and sched_dep_time are convenient to look
+at, but hard to compute with because they’re not really continuous numbers. Convert them to a more convenient representation of number of minutes since midnight.
 ```{r}
-#
+flights2<-mutate(flights,
+                 dep_hr=dep_time%/%100+(dep_time%%100)/60,
+                 sched_dep_hr=sched_dep_time%/%100+(sched_dep_time%%100)/60,
+                 arr_hr=arr_time%/%100+(arr_time%%100)/60,
+                 sched_arr_hr=sched_arr_time%/%100+(sched_arr_time%%100)/60)
+
 ```
 
 ##  Exercise 2
+Compare air_time with arr_time - dep_time. What do you
+expect to see? What do you see? What do you need to do to fix
+it?
+
+I see that these values are not similar. I expect them to be similar becuase theoretically they are measuring the time in the airplane. To fix this we would need to convert arrival time and departure time to minutes since midnight and subtract them from each other in the order arrival_min_mid = dep_min_mid. 
 ```{r}
-#
+flights3<-transmute(flights,
+                 dep_hr=dep_time%/%100+(dep_time%%100)/60,
+                 sched_dep_hr=sched_dep_time%/%100+(sched_dep_time%%100)/60,
+                 arr_hr=arr_time%/%100+(arr_time%%100)/60,
+                 sched_arr_hr=sched_arr_time%/%100+(sched_arr_time%%100)/60, 
+                 calc_air_time = arr_time - dep_time, air_time)
+flights3
 ```
 
 ##  Exercise 3
+Compare dep_time, sched_dep_time, and dep_delay. How
+would you expect those three numbers to be related?
+I think that dep_time is the time the flight actually left, sched_dep_time is the time the flight was scheduled to leave, and dep_delay the amount of times in mintues the flight was delayed. dep_delayed is calculated by doing dep_time - sched_dep_time.
 ```{r}
-#
+transmute(flights, dep_time, sched_dep_time, dep_delay)
 ```
 
 ##  Exercise 4
+Find the 10 most delayed flights using a ranking function. How
+do you want to handle ties? Carefully read the documentation
+for min_rank().
+
+For ties I could use tie.method within the min_rank function.
 ```{r}
-#
+?min_rank()
+min_rank(desc(flights$dep_delay))
 ```
